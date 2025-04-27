@@ -1,0 +1,409 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ocorrências e Alertas</title>
+    <link rel="stylesheet" href="styles (1).css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <div class="login-form">
+            <h2>Login do Sistema</h2>
+            <div class="form-group">
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" placeholder="Digite seu usuário">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" placeholder="Digite sua senha">
+            </div>
+            <div class="form-actions">
+                <button id="btnLogin">Entrar</button>
+            </div>
+            <div id="loginError" class="error-message hidden">Usuário ou senha incorretos!</div>
+        </div>
+    </div>
+
+    <div id="mainContainer" class="container hidden">
+        <div class="container">
+            <div class="header">
+                <h1>Sistema de Controle</h1>
+                <div class="buttons">
+                    <button id="btnOcorrencias">Ocorrências</button>
+                    <button id="btnAlertas">Alertas</button>
+                    <button id="btnLogout">Sair</button>
+                </div>
+            </div>
+            
+            <div id="ocorrenciasForm" class="form-container hidden">
+                <h2>Nova Ocorrência</h2>
+                <div class="form-group">
+                    <label for="batalhao">Batalhão:</label>
+                    <select id="batalhao">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="qth">QTH:</label>
+                    <input type="text" id="qth" placeholder="Insira o QTH">
+                </div>
+                <div class="form-group">
+                    <label for="historico">Histórico:</label>
+                    <textarea id="historico" rows="5" placeholder="Descreva o histórico da ocorrência"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button id="salvarOcorrencia">Salvar</button>
+                    <button id="cancelarOcorrencia">Cancelar</button>
+                </div>
+            </div>
+            
+            <div id="alertasForm" class="form-container hidden">
+                <h2>Novo Alerta</h2>
+                <div class="form-group">
+                    <label for="descricaoAlerta">Descrição do Alerta:</label>
+                    <input type="text" id="descricaoAlerta" placeholder="Insira a descrição do alerta">
+                </div>
+                <div class="form-actions">
+                    <button id="salvarAlerta">Salvar</button>
+                    <button id="cancelarAlerta">Cancelar</button>
+                </div>
+            </div>
+            
+            <div class="lists-container">
+                <div id="alertasList" class="list">
+                    <h2>Alertas Ativos</h2>
+                    <div class="items"></div>
+                </div>
+                
+                <div id="ocorrenciasList" class="list">
+                    <h2>Ocorrências Registradas</h2>
+                    <div class="items"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="scrolling-text">
+                DESENVOLVIDO POR: CB PM SALES LIMA, CB PMN PIVARO, SGT PM SUSANA, TEN PM CORDEIRO - SETOR DE TECNOLOGIA
+            </div>
+        </div>
+        
+        <script>
+          // Configuração do Firebase
+          const firebaseConfig = {
+            apiKey: "AIzaSyBtxISdCskCtUxDT-HW8vIqNf8ZsY6AWQA",
+            authDomain: "prelecao-a973b.firebaseapp.com",
+            databaseURL: "https://prelecao-a973b-default-rtdb.firebaseio.com",
+            projectId: "prelecao-a973b",
+            storageBucket: "prelecao-a973b.firebasestorage.app",
+            messagingSenderId: "103686484883",
+            appId: "1:103686484883:web:d3eeb0bc319d575967ae66"
+          };
+
+          // Inicializa o Firebase
+          firebase.initializeApp(firebaseConfig);
+          const database = firebase.database();
+          const auth = firebase.auth();
+          
+          document.addEventListener('DOMContentLoaded', () => {
+              // Login Elements
+              const loginContainer = document.getElementById('loginContainer');
+              const mainContainer = document.getElementById('mainContainer');
+              const usernameInput = document.getElementById('username');
+              const passwordInput = document.getElementById('password');
+              const btnLogin = document.getElementById('btnLogin');
+              const loginError = document.getElementById('loginError');
+
+              // Login Credentials
+              const VALID_USERNAME = 'EQUIPEECHO';
+              const VALID_PASSWORD = 'ECHOVDM';
+
+              // Login Event
+              btnLogin.addEventListener('click', () => {
+                  const username = usernameInput.value.trim().toUpperCase();
+                  const password = passwordInput.value;
+
+                  if (username === VALID_USERNAME && password === VALID_PASSWORD) {
+                      loginContainer.classList.add('hidden');
+                      mainContainer.classList.remove('hidden');
+                      loginError.classList.add('hidden');
+                  } else {
+                      loginError.classList.remove('hidden');
+                      passwordInput.value = '';
+                  }
+              });
+
+              // Enter key for login
+              passwordInput.addEventListener('keyup', (e) => {
+                  if (e.key === 'Enter') {
+                      btnLogin.click();
+                  }
+              });
+
+              // Moving the existing DOM elements references
+              const btnOcorrencias = document.getElementById('btnOcorrencias');
+              const btnAlertas = document.getElementById('btnAlertas');
+              const btnLogout = document.getElementById('btnLogout');
+              const ocorrenciasForm = document.getElementById('ocorrenciasForm');
+              const alertasForm = document.getElementById('alertasForm');
+              const batalhaoSelect = document.getElementById('batalhao');
+              const qthInput = document.getElementById('qth');
+              const historicoInput = document.getElementById('historico');
+              const descricaoAlertaInput = document.getElementById('descricaoAlerta');
+              const salvarOcorrenciaBtn = document.getElementById('salvarOcorrencia');
+              const cancelarOcorrenciaBtn = document.getElementById('cancelarOcorrencia');
+              const salvarAlertaBtn = document.getElementById('salvarAlerta');
+              const cancelarAlertaBtn = document.getElementById('cancelarAlerta');
+              const ocorrenciasListItems = document.querySelector('#ocorrenciasList .items');
+              const alertasListItems = document.querySelector('#alertasList .items');
+
+              // Arrays para armazenar os dados
+              let ocorrencias = [];
+              let alertas = [];
+              let ocorrenciaEditando = null;
+              let alertaEditando = null;
+
+              // Preencher a lista de batalhões (1º ao 50º)
+              populateBatalhoes();
+              
+              function populateBatalhoes() {
+                  batalhaoSelect.innerHTML = '<option value="">Selecione...</option>';
+                  for (let i = 1; i <= 50; i++) {
+                      const option = document.createElement('option');
+                      option.value = i;
+                      option.textContent = `${i}º BPM`;
+                      batalhaoSelect.appendChild(option);
+                  }
+              }
+
+              // Gerenciamento de eventos
+              btnOcorrencias.addEventListener('click', () => {
+                  ocorrenciasForm.classList.remove('hidden');
+                  alertasForm.classList.add('hidden');
+                  resetOcorrenciaForm();
+                  ocorrenciaEditando = null;
+              });
+
+              btnAlertas.addEventListener('click', () => {
+                  alertasForm.classList.remove('hidden');
+                  ocorrenciasForm.classList.add('hidden');
+                  resetAlertaForm();
+                  alertaEditando = null;
+              });
+              
+              btnLogout.addEventListener('click', () => {
+                  auth.signOut().then(() => {
+                      loginContainer.classList.remove('hidden');
+                      mainContainer.classList.add('hidden');
+                  });
+              });
+
+              cancelarOcorrenciaBtn.addEventListener('click', () => {
+                  ocorrenciasForm.classList.add('hidden');
+                  resetOcorrenciaForm();
+                  ocorrenciaEditando = null;
+              });
+
+              cancelarAlertaBtn.addEventListener('click', () => {
+                  alertasForm.classList.add('hidden');
+                  resetAlertaForm();
+                  alertaEditando = null;
+              });
+
+              salvarOcorrenciaBtn.addEventListener('click', () => {
+                  const batalhao = batalhaoSelect.value;
+                  const qth = qthInput.value.trim();
+                  const historico = historicoInput.value.trim();
+
+                  if (!batalhao || !qth || !historico) {
+                      alert('Por favor, preencha todos os campos.');
+                      return;
+                  }
+
+                  const novaOcorrencia = {
+                      batalhao,
+                      qth,
+                      historico,
+                      data: new Date().toLocaleString('pt-BR')
+                  };
+                  
+                  if (ocorrenciaEditando !== null) {
+                      // Atualizar no Firebase
+                      const updates = {};
+                      updates[`ocorrencias/${ocorrenciaEditando}`] = novaOcorrencia;
+                      database.ref().update(updates);
+                  } else {
+                      // Salvar nova ocorrência no Firebase
+                      database.ref('ocorrencias').push(novaOcorrencia);
+                  }
+
+                  ocorrenciasForm.classList.add('hidden');
+                  resetOcorrenciaForm();
+                  ocorrenciaEditando = null;
+              });
+
+              salvarAlertaBtn.addEventListener('click', () => {
+                  const descricao = descricaoAlertaInput.value.trim();
+
+                  if (!descricao) {
+                      alert('Por favor, preencha a descrição do alerta.');
+                      return;
+                  }
+
+                  const novoAlerta = {
+                      descricao,
+                      data: new Date().toLocaleString('pt-BR')
+                  };
+                  
+                  if (alertaEditando !== null) {
+                      // Atualizar no Firebase
+                      const updates = {};
+                      updates[`alertas/${alertaEditando}`] = novoAlerta;
+                      database.ref().update(updates);
+                  } else {
+                      // Salvar novo alerta no Firebase
+                      database.ref('alertas').push(novoAlerta);
+                  }
+
+                  alertasForm.classList.add('hidden');
+                  resetAlertaForm();
+                  alertaEditando = null;
+              });
+
+              // Funções para atualizar as listas
+              function atualizarListaOcorrencias() {
+                  // Implementação local caso necessário
+                  // Esta função não é mais usada diretamente já que os dados vêm do Firebase
+              }
+
+              function atualizarListaAlertas() {
+                  // Implementação local caso necessário
+                  // Esta função não é mais usada diretamente já que os dados vêm do Firebase
+              }
+
+              // Funções para editar e excluir
+              function editarOcorrencia(id, ocorrencia) {
+                  batalhaoSelect.value = ocorrencia.batalhao;
+                  qthInput.value = ocorrencia.qth;
+                  historicoInput.value = ocorrencia.historico;
+                  
+                  ocorrenciasForm.classList.remove('hidden');
+                  alertasForm.classList.add('hidden');
+                  ocorrenciaEditando = id;
+              }
+
+              function excluirOcorrencia(id) {
+                  if (confirm('Tem certeza que deseja excluir esta ocorrência?')) {
+                      database.ref(`ocorrencias/${id}`).remove();
+                  }
+              }
+
+              function editarAlerta(id, alerta) {
+                  descricaoAlertaInput.value = alerta.descricao;
+                  
+                  alertasForm.classList.remove('hidden');
+                  ocorrenciasForm.classList.add('hidden');
+                  alertaEditando = id;
+              }
+
+              function excluirAlerta(id) {
+                  if (confirm('Tem certeza que deseja excluir este alerta?')) {
+                      database.ref(`alertas/${id}`).remove();
+                  }
+              }
+
+              // Funções auxiliares
+              function resetOcorrenciaForm() {
+                  batalhaoSelect.value = '';
+                  qthInput.value = '';
+                  historicoInput.value = '';
+              }
+
+              function resetAlertaForm() {
+                  descricaoAlertaInput.value = '';
+              }
+
+              function formatarData(data) {
+                  return `${data.getDate().toString().padStart(2, '0')}/${(data.getMonth() + 1).toString().padStart(2, '0')}/${data.getFullYear()} ${data.getHours().toString().padStart(2, '0')}:${data.getMinutes().toString().padStart(2, '0')}`;
+              }
+              
+              // Configurar listeners para dados do Firebase
+              database.ref('ocorrencias').on('value', (snapshot) => {
+                  ocorrenciasListItems.innerHTML = '';
+                  snapshot.forEach((childSnapshot) => {
+                      const ocorrencia = childSnapshot.val();
+                      const ocorrenciaId = childSnapshot.key;
+                      
+                      const item = document.createElement('div');
+                      item.className = 'item';
+                      
+                      item.innerHTML = `
+                          <div class="item-header">
+                              <div class="item-title">${ocorrencia.batalhao}º BPM - ${ocorrencia.data}</div>
+                              <div class="item-actions">
+                                  <button class="btn-editar" data-id="${ocorrenciaId}">Editar</button>
+                                  <button class="btn-excluir" data-id="${ocorrenciaId}">Excluir</button>
+                              </div>
+                          </div>
+                          <div class="item-content">
+                              <strong>QTH:</strong> ${ocorrencia.qth}<br><br>
+                              <strong>Histórico:</strong> ${ocorrencia.historico}
+                          </div>
+                      `;
+                      
+                      ocorrenciasListItems.appendChild(item);
+                      
+                      // Adicionar event listeners
+                      item.querySelector('.btn-editar').addEventListener('click', () => {
+                          editarOcorrencia(ocorrenciaId, ocorrencia);
+                      });
+                      
+                      item.querySelector('.btn-excluir').addEventListener('click', () => {
+                          excluirOcorrencia(ocorrenciaId);
+                      });
+                  });
+              });
+              
+              database.ref('alertas').on('value', (snapshot) => {
+                  alertasListItems.innerHTML = '';
+                  snapshot.forEach((childSnapshot) => {
+                      const alerta = childSnapshot.val();
+                      const alertaId = childSnapshot.key;
+                      
+                      const item = document.createElement('div');
+                      item.className = 'item alert-item';
+                      
+                      item.innerHTML = `
+                          <div class="item-header">
+                              <div class="item-title">${alerta.data}</div>
+                              <div class="item-actions">
+                                  <button class="btn-editar" data-id="${alertaId}">Editar</button>
+                                  <button class="btn-excluir" data-id="${alertaId}">Excluir</button>
+                              </div>
+                          </div>
+                          <div class="item-content alert-blinking">
+                              ${alerta.descricao}
+                          </div>
+                      `;
+                      
+                      alertasListItems.appendChild(item);
+                      
+                      // Adicionar event listeners
+                      item.querySelector('.btn-editar').addEventListener('click', () => {
+                          editarAlerta(alertaId, alerta);
+                      });
+                      
+                      item.querySelector('.btn-excluir').addEventListener('click', () => {
+                          excluirAlerta(alertaId);
+                      });
+                  });
+              });
+          });
+        </script>
+    </div>
+</body>
+</html>
